@@ -1,0 +1,27 @@
+#!/bin/bash
+
+cd /usr/local/lxdui
+
+do_checkcerts() {
+
+    NOTFOUND=false
+    for FILE in $(python3 run.py config show | grep ^lxdui\.ssl\. | sed 's/.\+= \?//'); do
+        test -s $FILE || NOTFOUND=true
+    done
+    if $NOTFOUND; then
+        echo "No suitable certificates found, trying to create one."
+        python3 run.py cert create
+    fi
+
+}
+
+do_start() {
+        python3 run.py start
+}
+
+if [ -z "$1" ]; then
+        do_checkcerts
+        do_start
+else
+        python3 run.py $1
+fi

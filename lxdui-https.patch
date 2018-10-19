@@ -1,0 +1,63 @@
+diff -Nura -x .git lxdui-orig/app/api/controllers/terminal.py lxdui/app/api/controllers/terminal.py
+--- lxdui-orig/app/api/controllers/terminal.py	2018-10-18 23:50:55.133891813 +0700
++++ lxdui/app/api/controllers/terminal.py	2018-10-18 23:01:12.286400422 +0700
+@@ -3,6 +3,7 @@
+ import tornado
+ import tornado.web
+ import tornado.wsgi
++import ssl
+ from tornado.wsgi import WSGIContainer
+ from tornado.httpserver import HTTPServer
+ from tornado.ioloop import IOLoop
+@@ -12,6 +13,8 @@
+ from app.api.models.LXCContainer import LXCContainer
+ from app.lib.termmanager import NamedTermManager
+ from app.api.utils import mappings
++from app.lib.conf import Config
++from app import __metadata__ as meta
+ 
+ TEMPLATE_DIR = os.path.dirname(__file__).replace('/api/controllers','/ui/templates/')
+ STATIC_DIR = os.path.dirname(__file__).replace('/api/controllers','/ui/static/')
+@@ -69,4 +73,14 @@
+                               debug=debug)
+     http_server = HTTPServer(tornado_app)
+     http_server.listen(port, '0.0.0.0')
+-    IOLoop.instance().start()
+\ No newline at end of file
++    print("LXDUI started. Running on http://0.0.0.0:{}".format(port))
++    try:
++        ssl_ctx = ssl.create_default_context(ssl.Purpose.CLIENT_AUTH)
++        ssl_ctx.load_cert_chain(Config().get(meta.APP_NAME, '{}.ssl.cert'.format(meta.APP_NAME.lower())),
++                                Config().get(meta.APP_NAME, '{}.ssl.key'.format(meta.APP_NAME.lower())))
++        https_server = HTTPServer(tornado_app, ssl_options=ssl_ctx)
++        https_server.listen(port+1, '0.0.0.0')
++        print("                         https://0.0.0.0:{}".format(port+1))
++    except:
++        pass
++    IOLoop.instance().start()
+diff -Nura -x .git lxdui-orig/app/api/core.py lxdui/app/api/core.py
+--- lxdui-orig/app/api/core.py	2018-10-18 23:50:55.133891813 +0700
++++ lxdui/app/api/core.py	2018-10-18 23:12:39.366258580 +0700
+@@ -130,7 +146,6 @@
+     with open(PID, 'w') as f:
+         f.write(str(pid))
+ 
+-    print("LXDUI started. Running on http://0.0.0.0:{}".format(port))
+     print("PID={}, Press CTRL+C to quit".format(pid))
+     terminal(app, port, debug)
+     # app.run(debug=debug, host='0.0.0.0', port=port)
+\ No newline at end of file
+diff -Nura -x .git lxdui-orig/app/cli/cli.py lxdui/app/cli/cli.py
+--- lxdui-orig/app/cli/cli.py	2018-10-18 23:50:55.137891631 +0700
++++ lxdui/app/cli/cli.py	2018-10-18 11:37:42.566300874 +0700
+@@ -246,8 +246,8 @@
+     """Create client certificates"""
+     c = Certificate()
+     key, crt = c.create()
+-    c.save(key)
+-    c.save(crt)
++    c.save(c.key_file, key)
++    c.save(c.cert_file, crt)
+ 
+ 
+ @cert.command()
