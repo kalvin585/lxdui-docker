@@ -26,5 +26,5 @@ if [ -z "$1" ]; then
         do_checkcerts
         do_start
 else
-        python3 run.py $1
+        python3 run.py $@
 fi
